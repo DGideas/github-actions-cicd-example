@@ -2,8 +2,11 @@ name: CI
 on: push
 
 jobs:
+  strategy:
+    matrix:
+      servers: [ubuntu-latest, macos-latest]
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.servers}}
     steps:
       - name: Checkout repo
         run: |
