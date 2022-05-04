@@ -1,0 +1,47 @@
+name: 线上部署代码
+on:
+  workflow_dispatch:
+    inputs:
+      branchname:
+        description: '请输入要部署的分支名称:'
+        required: true
+        default: 'release'
+jobs:
+  deployment:
+    strategy:
+      matrix:
+        servers: [prod-1]
+    runs-on: ${{matrix.servers}}
+    steps:
+      - name: Checkout Repo
+        run: |
+          rm -rf ${{github.event.repository.name}}
+          git clone https://${{github.repository_owner}}:${{github.token}}@github.com/${{github.repository}}
+          git -C "${{github.workspace}}/${{github.event.repository.name}}" checkout ${{github.event.inputs.branchname}}
+      - name: deploy to prod
+        run: |
+          cd /opt/xx-service
+          rm -rf ${{github.event.repository.name}}
+          git clone https://${{github.repository_owner}}:${{github.token}}@github.com/${{github.repository}}
+          git -C "${{github.workspace}}/${{github.event.repository.name}}" checkout ${{github.event.inputs.branchname}}
+          cd ${{github.event.repository.name}}
+          pip3 install -r requirements.txt
+          cd ..
+          sudo systemctl stop 'xx-service-*'
+          rm -rf src
+          mv ${{github.event.repository.name}} src
+          sudo systemctl start --all 'xx-service-*'
+      - name: Send mail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.example.com
+          server_port: 587
+          username: ${{secrets.MAIL_USERNAME}}
+          password: ${{secrets.MAIL_PASSWORD}}
+          subject: XX-service 线上部署通知
+          to: david@example.com
+          body: 已经成功将 ${{github.repository}} 仓库的 ${{github.event.inputs.branchname}} 分支部署到线上，位于 ${{matrix.servers}} 服务器。
+          convert_markdown: true
+      - name: Cleanup
+        run: |
+          rm -rf ${{github.event.repository.name}}
